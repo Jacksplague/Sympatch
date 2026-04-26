@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+sympatch/__init__.py
+sympatch/cli.py
+sympatch/diffutil.py
+sympatch/indexer.py
+sympatch/models.py
+sympatch/patcher.py
+sympatch/storage.py
+sympatch/utils.py
+sympatch/validator.py
+sympatch.egg-info/PKG-INFO
+sympatch.egg-info/SOURCES.txt
+sympatch.egg-info/dependency_links.txt
+sympatch.egg-info/entry_points.txt
+sympatch.egg-info/top_level.txt
+tests/test_basic.py

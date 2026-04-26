@@ -1,0 +1,2 @@
+[console_scripts]
+sympatch = sympatch.cli:main
