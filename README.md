@@ -119,8 +119,6 @@ def run_tool_loop(self, max_tool_rounds: int = 8) -> None:
 
 ## Current limitations
 
-This is an MVP. It is intentionally boring and deterministic.
-
 - Python-only.
 - Uses `ast`, so it does not preserve comments inside rewritten symbols unless the replacement contains them.
 - Does not yet build full call graphs or dependency slices.
