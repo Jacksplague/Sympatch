@@ -47,7 +47,7 @@ sympatch --root /path/to/project modules
 Show a module's symbols:
 
 ```bash
-sympatch --root /path/to/project symbols gui.py
+sympatch --root /path/to/project symbols your_file.py
 ```
 
 Print a compact code tree:
@@ -65,25 +65,25 @@ sympatch --root /path/to/project search run_tool
 Show exact symbol source:
 
 ```bash
-sympatch --root /path/to/project show gui.py::AgentGUI.run_tool_loop
+sympatch --root /path/to/project show your_file.py::AgentGUI.run_tool_loop
 ```
 
 Show metadata for a symbol:
 
 ```bash
-sympatch --root /path/to/project card gui.py::AgentGUI.run_tool_loop
+sympatch --root /path/to/project card your_file.py::AgentGUI.run_tool_loop
 ```
 
 Replace a function or method:
 
 ```bash
-sympatch --root /path/to/project replace gui.py::AgentGUI.run_tool_loop patched_run_tool_loop.py
+sympatch --root /path/to/project replace your_file.py::AgentGUI.run_tool_loop patched_run_tool_loop.py
 ```
 
 Validate a file or project:
 
 ```bash
-sympatch --root /path/to/project validate gui.py
+sympatch --root /path/to/project validate your_file.py
 sympatch --root /path/to/project validate .
 ```
 
