@@ -52,8 +52,6 @@ Sympatch stores its local project metadata in:
 .sympatch/
 ```
 
-That directory should normally be ignored by Git.
-
 ## Core commands
 
 | Command | Purpose |
@@ -450,20 +448,6 @@ python tests/test_sympatch_09.py --stop-on-fail
 ```
 
 The test script creates a disposable controlled project and verifies expected behavior for indexing, inspection, replacement, reconciliation, sessions, intents, validation hooks, rollback, aliases, and CLI cleanup.
-
-## Git ignore
-
-Recommended `.gitignore` entries:
-
-```gitignore
-.sympatch/
-__pycache__/
-*.pyc
-build/
-dist/
-*.egg-info/
-.venv/
-```
 
 ## Release notes
 
