@@ -1,11 +1,17 @@
 README.md
 pyproject.toml
 sympatch/__init__.py
+sympatch/bundle.py
 sympatch/cli.py
+sympatch/context.py
 sympatch/diffutil.py
+sympatch/impact.py
 sympatch/indexer.py
+sympatch/intents.py
 sympatch/models.py
 sympatch/patcher.py
+sympatch/reconcile.py
+sympatch/sessions.py
 sympatch/storage.py
 sympatch/utils.py
 sympatch/validator.py
@@ -14,4 +20,4 @@ sympatch.egg-info/SOURCES.txt
 sympatch.egg-info/dependency_links.txt
 sympatch.egg-info/entry_points.txt
 sympatch.egg-info/top_level.txt
-tests/test_basic.py
+tests/test_sympatch_09.py

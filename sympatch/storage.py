@@ -26,18 +26,13 @@ def history_log_path(root: Path) -> Path:
 
 def save_index(root: Path, index: ProjectIndex) -> None:
     ensure_dir(sympatch_dir(root))
-    index_path(root).write_text(
-        json.dumps(index.to_dict(), indent=2, sort_keys=True),
-        encoding="utf-8",
-    )
+    index_path(root).write_text(json.dumps(index.to_dict(), indent=2, sort_keys=True), encoding="utf-8")
 
 
 def load_index(root: Path) -> ProjectIndex:
     path = index_path(root)
     if not path.exists():
-        raise FileNotFoundError(
-            f"No sympatch index found at {path}. Run `sympatch scan {root}` first."
-        )
+        raise FileNotFoundError(f"No sympatch index found at {path}. Run `sympatch index {root}` first.")
     return ProjectIndex.from_dict(json.loads(path.read_text(encoding="utf-8")))
 
 
@@ -56,3 +51,15 @@ def read_history(root: Path) -> list[dict[str, Any]]:
         if line.strip():
             out.append(json.loads(line))
     return out
+
+
+def write_history(root: Path, records: list[dict[str, Any]]) -> None:
+    ensure_dir(history_dir(root))
+    history_log_path(root).write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in records), encoding="utf-8")
+
+
+def latest_patch_record(root: Path) -> dict[str, Any] | None:
+    for record in reversed(read_history(root)):
+        if record.get("operation") == "replace_symbol":
+            return record
+    return None

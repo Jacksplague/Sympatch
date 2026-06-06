@@ -4,12 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sympatch"
-version = "0.1.0"
-description = "Symbol-aware patching tools for Python projects."
+version = "0.9.0"
+description = "Symbol-aware patching, reconciliation, and transaction-safe context slicing for Python projects."
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [{ name = "sympatch contributors" }]
+authors = [{ name = "Sympatch Contributors" }]
 license = { text = "MIT" }
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = []
 
 [project.scripts]

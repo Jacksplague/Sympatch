@@ -1,131 +1,273 @@
-# sympatch
+# Sympatch
 
-`sympatch` is a small, standalone, symbol-aware patching tool for Python projects.
+Symbol-aware patching and context slicing for Python projects.
 
-It indexes Python modules with `ast`, gives every class/function/method a stable symbol ID, extracts exact symbol source, replaces individual symbols with hash checks, validates patched files, records history, and re-indexes after successful edits.
-
-The intended use case is agentic coding, large-file maintenance, and memory-efficient code navigation:
-
-```text
-AST parse -> symbol index -> exact symbol extraction -> hash-checked replacement -> validation -> patch history -> re-index
-```
+Sympatch indexes Python source with the standard library `ast` module, resolves symbols by stable IDs, replaces only the requested function/class/method, validates generated Python before writing, records rollbackable history, and can mine symbol-level patches out of AI/full-file rewrites.
 
 ## Install
 
-From this folder:
+```bash
+python -m pip install sympatch-0.9.0-py3-none-any.whl
+```
+
+## Core commands
 
 ```bash
-python -m pip install -e .
+sympatch index [path]
+sympatch modules
+sympatch symbols [file]
+sympatch tree
+sympatch find QUERY
+sympatch show SYMBOL [--lines]
+sympatch card SYMBOL
+sympatch context SYMBOL [--depth 1] [--direction both]
+sympatch bundle SYMBOL [--format markdown|json] [--out bundle.md]
+sympatch analyze SYMBOL
+sympatch impact SYMBOL
+sympatch replace SYMBOL replacement_symbol.py
+sympatch reconcile target_file.py ai_rewrite.py [--apply]
+sympatch session start [name]
+sympatch session replace SYMBOL replacement_symbol.py
+sympatch session validate
+sympatch session diff
+sympatch session commit
+sympatch intent preview patch_intent.json
+sympatch intent apply patch_intent.json
+sympatch intent template --kind replace|reconcile|mixed
+sympatch validate [path] [--no-hooks|--syntax-only] [--command "..."]
+sympatch diff [last|PATCH_ID]
+sympatch history
+sympatch rollback [last|PATCH_ID]
 ```
 
-Then run:
+Compatibility aliases are hidden from normal help but still work: `scan -> index`, `search -> find`, `slice -> context --depth 2`, and `apply-intent -> intent apply`. Use `sympatch --help-all` to show them.
+
+## Symbol IDs
+
+A symbol ID is usually:
+
+```text
+module.qualname
+```
+
+Examples:
+
+```text
+agent.Agent.run
+agent.tool_registry.ToolRegistry._check_python_syntax
+utils.load_json
+```
+
+You can also use a unique suffix, exact symbol name, or search query when unambiguous.
+
+
+## Impact analysis
+
+`impact` is the stronger caller/dependency review command. It is meant to answer whether changing a target symbol's contract is safe.
 
 ```bash
-sympatch --help
+sympatch --root C:/Agent/SYM/0.5 impact tool_registry.ToolRegistry._check_python_syntax
+sympatch --root C:/Agent/SYM/0.5 impact tool_registry.ToolRegistry._check_python_syntax --json
 ```
 
-You can also run without installing:
+The report includes:
+
+- resolved internal caller edges and inspected call sites
+- positional and keyword argument use
+- whether call return values are assigned, returned, used as conditions, passed as arguments, or ignored
+- direct imports that could break if the symbol is moved or renamed
+- same-name method candidates that may indicate inheritance/protocol coupling
+- outgoing dependencies and unresolved or low-confidence calls
+- signature, return-value, dependency, and overall risk levels
+- recommended validation/smoke tests
+
+The analysis is static and conservative. Dynamic dispatch, callbacks, reflection, monkey-patching, and string-based imports may still need manual review.
+
+## Validation hooks
+
+`validate` now reads optional hooks from `.sympatch/config.toml` or `.sympatch/config.json`. Generate a starter TOML file with:
 
 ```bash
-python -m sympatch.cli --help
+sympatch --root C:/Agent/SYM/0.5 validate --init-config
 ```
 
-## Quick start
+Example config:
 
-Index a project:
+```toml
+[validation]
+syntax = true
+timeout_seconds = 120
+fail_fast = false
+commands = [
+  "python -m compileall .",
+  "python -m pytest tests",
+]
+```
+
+Run configured validation:
 
 ```bash
-sympatch scan /path/to/project
+sympatch --root C:/Agent/SYM/0.5 validate
 ```
 
-List indexed modules:
+Run syntax only:
 
 ```bash
-sympatch --root /path/to/project modules
+sympatch --root C:/Agent/SYM/0.5 validate --syntax-only
 ```
 
-Show a module's symbols:
+Add one-off hooks without editing config:
 
 ```bash
-sympatch --root /path/to/project symbols your_file.py
+sympatch --root C:/Agent/SYM/0.5 validate --command "python agent.py --self-test tool_loop"
 ```
 
-Print a compact code tree:
+Mutating operations keep external hooks opt-in so normal patching stays fast. Use `--run-hooks` when you want the transaction to be finalized only after configured hooks pass:
 
 ```bash
-sympatch --root /path/to/project tree
+sympatch replace SYMBOL replacement.py --run-hooks
+sympatch reconcile target.py rewritten.py --apply --run-hooks
+sympatch session commit --run-hooks
+sympatch intent apply patch_intent.json --run-hooks
 ```
 
-Search symbols:
+If hooks fail during a mutating transaction, Sympatch restores the original touched files and re-indexes the project before returning an error.
+
+## LLM context bundles
+
+`bundle` emits an agent-ready brief around a target symbol. Markdown is the default because it is meant to be pasted directly into an LLM prompt or saved as an audit artifact.
 
 ```bash
-sympatch --root /path/to/project search run_tool
+sympatch --root C:/Agent/SYM/0.5 bundle tool_registry.ToolRegistry._check_python_syntax --out check_python_syntax.bundle.md
 ```
 
-Show exact symbol source:
+JSON output is available for programmatic agents:
 
 ```bash
-sympatch --root /path/to/project show your_file.py::AgentGUI.run_tool_loop
+sympatch --root C:/Agent/SYM/0.5 bundle tool_registry.ToolRegistry._check_python_syntax --format json --out check_python_syntax.bundle.json
 ```
 
-Show metadata for a symbol:
+A bundle contains:
+
+- target source, signature, docstring, file range, and hash
+- replacement constraints for safe symbol patching
+- direct static callers and callees
+- nearby symbols in the same parent/file
+- imports for selected files
+- analysis notes and recommended validation steps
+- a patch-intent template prefilled with the target symbol and expected hash
+
+## Patch intent files
+
+Patch intents let an agent declare what it wants changed while Sympatch performs the deterministic execution.
+
+Preview first:
 
 ```bash
-sympatch --root /path/to/project card your_file.py::AgentGUI.run_tool_loop
+sympatch --root C:/Agent/SYM/0.5 intent preview patch_intent.json
 ```
 
-Replace a function or method:
+Apply atomically:
 
 ```bash
-sympatch --root /path/to/project replace your_file.py::AgentGUI.run_tool_loop patched_run_tool_loop.py
+sympatch --root C:/Agent/SYM/0.5 intent apply patch_intent.json
 ```
 
-Validate a file or project:
+Create a template:
 
 ```bash
-sympatch --root /path/to/project validate your_file.py
-sympatch --root /path/to/project validate .
+sympatch intent template --kind replace --out patch_intent.json
+sympatch intent template --kind reconcile --out reconcile_intent.json
+sympatch intent template --kind mixed --out mixed_intent.json
 ```
 
-Show latest patch diff:
+### Replace intent
+
+```json
+{
+  "version": "0.9.0",
+  "name": "fix-syntax-validation-flow",
+  "reason": "Distinguish automated validation from an agent-requested syntax tool call.",
+  "validate": true,
+  "operations": [
+    {
+      "operation": "replace",
+      "target": "tool_registry.ToolRegistry._check_python_syntax",
+      "source_file": "patched_check_python_syntax.py",
+      "expected_hash": "sha256:current-symbol-hash",
+      "allow_name_change": false,
+      "force": false
+    }
+  ]
+}
+```
+
+### Reconcile intent
+
+```json
+{
+  "version": "0.9.0",
+  "name": "mine-ai-rewrite",
+  "reason": "Extract only changed symbols from a rewritten file.",
+  "validate": true,
+  "operations": [
+    {
+      "operation": "reconcile",
+      "target_file": "tool_registry.py",
+      "rewritten_file": "tool_registry_ai_rewrite.py",
+      "include_classes": false,
+      "allow_name_change": false,
+      "force": false
+    }
+  ]
+}
+```
+
+Intent paths for replacement and rewritten files are resolved relative to the intent file, which makes intent bundles portable. `target_file` is resolved relative to the project root.
+
+All replace and reconcile operations in one intent are converted to symbol replacements and then applied as a single transaction. If validation fails, nothing is written. Applied intent records are rollbackable with `sympatch rollback last`.
+
+## Reconcile
+
+`reconcile` compares a real project file with a full-file rewrite. It parses both files, hashes AST bodies, ignores pure formatting drift, and applies only changed symbols.
+
+Dry run:
 
 ```bash
-sympatch --root /path/to/project diff
+sympatch --root C:/Agent/SYM/0.5 reconcile tool_registry.py C:/tmp/tool_registry_ai_rewrite.py
 ```
 
-Rollback latest patch:
+Apply:
 
 ```bash
-sympatch --root /path/to/project rollback last
+sympatch --root C:/Agent/SYM/0.5 reconcile tool_registry.py C:/tmp/tool_registry_ai_rewrite.py --apply
 ```
 
-## Replacement files
+Added and deleted symbols are reported but not automatically applied. Whole-class replacement is skipped by default unless `--include-classes` is used.
 
-For method replacement, write the replacement method at normal zero indentation:
+## Transaction sessions
 
-```python
-def run_tool_loop(self, max_tool_rounds: int = 8) -> None:
-    pass
+Sessions are useful when related symbols need to change together.
+
+```bash
+sympatch --root C:/Agent/SYM/0.5 session start syntax-validation-fix
+sympatch --root C:/Agent/SYM/0.5 session replace tool_registry.ToolRegistry._check_python_syntax patched_check.py
+sympatch --root C:/Agent/SYM/0.5 session validate
+sympatch --root C:/Agent/SYM/0.5 session diff
+sympatch --root C:/Agent/SYM/0.5 session commit
 ```
 
-`sympatch` will automatically indent it to match the target method's existing indentation.
+A committed session writes one patch record and one rollback point.
 
-## Safety features
+## Safety model
 
-- Refuses to patch if the indexed symbol hash does not match the current file.
-- Writes patch history under `.sympatch/history/`.
-- Restores the original file automatically if Python compilation fails after a patch.
-- Re-indexes the project after successful patch or rollback.
+Sympatch intentionally does not give an LLM broad write access. The safe path is:
 
-## Current limitations
-
-- Python-only.
-- Uses `ast`, so it does not preserve comments inside rewritten symbols unless the replacement contains them.
-- Does not yet build full call graphs or dependency slices.
-- Symbol summaries are not generated yet.
-- Does not perform semantic search.
-
-## Recommended workflow
-
-Use Git or copy your project before heavy automated patching. `sympatch` has rollback history, but Git remains the correct source of truth.
+1. index the project
+2. export a context bundle
+3. generate a replacement symbol or patch intent
+4. preview the diff
+5. validate syntax
+6. commit atomically
+7. rollback if needed
 
